@@ -1,0 +1,19 @@
+{
+    "name": "boxed-code/event-source",
+    "description": "EventSource emitter & consumer for PHP.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Oliver Green",
+            "email": "oliver@boxedcode.co.uk"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "BoxedCode\\EventSource\\": "src/"
+        }
+    },
+}
