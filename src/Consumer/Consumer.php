@@ -51,7 +51,7 @@ class Consumer
 
         $stream = fopen("event-source://default", "r+", false, $context);
 
-        $response = $this->http->request($method, $uri);
+        $response = $this->http->request($method, $uri, $stream);
 
         fclose($stream);
 
