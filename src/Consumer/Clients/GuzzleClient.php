@@ -11,7 +11,7 @@ class GuzzleClient implements ClientInterface
         $this->instance = $client;
     }
 
-    public function request($method, $uri, $stream)
+    public function request($method, $uri, $stream, $options = [])
     {
         $options = array_merge(
             $options, ['stream' => true, 'sink' => $stream]
