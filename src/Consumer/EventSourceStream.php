@@ -57,13 +57,15 @@ class EventSourceStream
 
         unset($lines[$lc-1]);
 
+        $writeLength = strlen($data);
+
+        $this->position =+ $writeLength;
+
+        $this->length =+ $writeLength;
+
         $this->processLines($lines);
 
-        $this->position =+ strlen($data);
-
-        $this->length =+ strlen($data);
-
-        return strlen($data);
+        return $writeLength;
     }
 
     public function stream_seek($offset, $whence = SEEK_SET)
@@ -119,8 +121,9 @@ class EventSourceStream
                 $event = isset($message['event']) ? $message['event'] : 'message';
 
                 if (is_callable($this->handler)) {
-                    \Log::debug($message);
-                    call_user_func_array($this->handler, [$event, $message['data'], $id]);
+                    call_user_func_array(
+                        $this->handler, [$event, $message['data'], $id]
+                    );
                 }
             }
         }
