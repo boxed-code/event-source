@@ -6,6 +6,8 @@ class EventSourceStream
 {
     protected $handler;
 
+    protected $data;
+
     protected $buffer = '';
 
     protected $lineBuffer = [];
@@ -13,6 +15,10 @@ class EventSourceStream
     protected $position = 0;
 
     protected $length = 0;
+
+    protected $lastRead;
+
+    protected $lastWrite;
 
     public static function register()
     {
@@ -27,7 +33,7 @@ class EventSourceStream
 
     public function stream_eof()
     {
-        return false;
+        return $this->position >= $this->length;
     }
 
     public function stream_open($path, $mode, $options, &$opened_path) 
@@ -38,11 +44,24 @@ class EventSourceStream
             $this->handler = $options['event-source']['handler'];
         }
 
+        $this->lastRead = $this->lastWrite = time();
+
         return true;
+    }
+
+    public function stream_read($count)
+    {
+        $result = @substr($this->data, $this->position, $count);
+
+        $this->position += strlen($result);
+
+        return $result;
     }
 
     public function stream_write($data) 
     {
+        $this->data .= $data;
+
         $lines = explode("\n", $data);
 
         // Get the previous partial line from the buffer 
@@ -59,13 +78,34 @@ class EventSourceStream
 
         $writeLength = strlen($data);
 
-        $this->position =+ $writeLength;
+        $this->position += $writeLength;
 
-        $this->length =+ $writeLength;
+        $this->length += $writeLength;
+
+        $this->lastWrite = time();
 
         $this->processLines($lines);
 
         return $writeLength;
+    }
+
+    public function stream_stat()
+    {
+        return [
+            'dev' => 0,
+            'ino' => 0,
+            'mode' => 0,
+            'nlink' => 0,
+            'uid' => 0,
+            'gid' => 0,
+            'rdev' => -1,
+            'size' => $this->length,
+            'atime' => time(),
+            'mtime' => time(),
+            'ctime' => time(),
+            'blksize' => -1,
+            'blocks' => -1,
+        ];
     }
 
     public function stream_seek($offset, $whence = SEEK_SET)
@@ -74,10 +114,13 @@ class EventSourceStream
         {
             case SEEK_SET:
                 $this->position = $offset;
+                break;
             case SEEK_CUR:
-                $this->position =+ $offset;
+                $this->position += $offset;
+                break;
             case SEEK_END:
                 $this->position = $this->length + $offset;
+                break;
         }
 
         return true;
