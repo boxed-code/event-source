@@ -12,6 +12,8 @@ class EventSourceStream
 
     protected $lineBuffer = [];
 
+    protected $messageBuffer = [];
+
     protected $position = 0;
 
     protected $length = 0;
@@ -137,37 +139,41 @@ class EventSourceStream
             $this->lineBuffer, $lines
         );
 
-        if (count($this->lineBuffer) > 0) {
-            list($line) = array_slice($this->lineBuffer, -1);
-        } else {
-            $line = '';
-        }
+        $messages = [];
+        $buffer = $this->messageBuffer;
+        $cursor = 0;
 
-        // Try and process the message.
-        if (trim($line) === '') {
-            $message = implode(PHP_EOL, $this->lineBuffer);
+        foreach ($this->lineBuffer as $k => $line) {
+            $line = trim($line);
 
-            // Extract the id, event & data lines.
-            preg_match_all('/(\w+):\s(.+)/i', $message, $matches, PREG_SET_ORDER);
+            if (empty($line)) {
+                // Clear the buffer.
+                if (isset($buffer['data'])) {
+                    $messages[] = $buffer;
+                }
+                
+                $buffer = [];
 
-            $message = [];
-
-            foreach ($matches as $group) {
-                $message[$group[1]] = $group[2];
+                continue;
             }
 
-            if (isset($message['data'])) {
-                $this->lineBuffer = [];
-                $previousLine = '';
+            if (preg_match('/(id|data|event):\s?(.+)/i', $line, $matches)) {
+                $buffer[$matches[1]] = $matches[2];
+            }
+        }
 
-                $id = isset($message['id']) ? $message['id'] : null;
-                $event = isset($message['event']) ? $message['event'] : 'message';
+        $this->lineBuffer = [];
 
-                if (is_callable($this->handler)) {
-                    call_user_func_array(
-                        $this->handler, [$event, $message['data'], $id]
-                    );
-                }
+        $this->messageBuffer = $buffer;
+
+        foreach ($messages as $message) {
+            $id = isset($message['id']) ? $message['id'] : null;
+            $event = isset($message['event']) ? $message['event'] : 'message';
+
+            if (is_callable($this->handler)) {
+                call_user_func_array(
+                    $this->handler, [$event, $message['data'], $id]
+                );
             }
         }
     }
